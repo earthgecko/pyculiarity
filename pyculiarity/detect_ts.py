@@ -8,7 +8,7 @@ from pandas import DataFrame, to_datetime
 from pandas.lib import Timestamp
 import numpy as np
 
-from pyculiarity.date_utils import get_gran
+from pyculiarity.date_utils import format_timestamp, get_gran, date_format, datetimes_from_ts
 from pyculiarity.detect_anoms import detect_anoms
 
 Direction = namedtuple('Direction', ['one_tail', 'upper_tail'])
@@ -68,7 +68,11 @@ def detect_ts(df, max_anoms=0.10, direction='pos', alpha=0.05, threshold=None, e
             raise ValueError('''data must be a 2 column data.frame, with the first column being a set of timestamps, and
                                 the second coloumn being numeric values.''')
 
-        if not (df.dtypes[0].type is np.float64) and not (df.dtypes[0].type is np.int64):
+        if (not (df.dtypes[0].type is np.datetime64)
+            and not (df.dtypes[0].type is np.int64)):
+            df = format_timestamp(df)
+
+        if not ((df.dtypes[0].type is np.float64) or (df.dtypes[0].type is np.datetime64)) and not (df.dtypes[0].type is np.int64):
             raise ValueError('''The input timestamp column must be a float or integer of the unix timestamp, not date
                                 time columns, date strings or pd.TimeStamp columns.''')
 
@@ -119,7 +123,8 @@ def detect_ts(df, max_anoms=0.10, direction='pos', alpha=0.05, threshold=None, e
         raise ValueError('%s granularity detected. This is currently not supported.' % (gran, ))
 
     # now convert the timestamp column into a proper timestamp
-    df['timestamp'] = df['timestamp'].map(lambda x: datetime.datetime.utcfromtimestamp(x))
+    if not (df.dtypes[0].type is np.datetime64):
+        df['timestamp'] = df['timestamp'].map(lambda x: datetime.datetime.utcfromtimestamp(x))
 
     num_obs = len(df.value)
 
